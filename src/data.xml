@@ -1,0 +1,22 @@
+<cities>
+    <city>
+        <id>1</id>
+        <name>Berlin</name>
+        <coordinates>
+            <x>10</x>
+            <y>100</y>
+        </coordinates>
+        <creationDate>2026-02-27T10:00:00</creationDate>
+        <area>891.1</area>
+        <population>3500000</population>
+        <metersAboveSeaLevel>34</metersAboveSeaLevel>
+        <climate>OCEANIC</climate>
+        <government>OLIGARCHY</government>
+        <standardOfLiving>VERY_HIGH</standardOfLiving>
+        <governor>
+            <name>John</name>
+            <height>1.8</height>
+            <birthday>2000-01-01T00:00:00</birthday>
+        </governor>
+    </city>
+</cities>
