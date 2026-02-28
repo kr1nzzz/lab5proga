@@ -1,24 +1,50 @@
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
+import java.util.Scanner;
 
+/**
+ * Обработчик команд интерактивного режима.
+ * <p>
+ * Разбирает введённую строку на команду и аргументы, вызывает соответствующие операции
+ * у {@link CollectionManager}. Ведёт историю последних команд и поддерживает выполнение
+ * команд из файла (скрипт) с защитой от рекурсии.
+ * </p>
+ */
 public class CommandManager {
+
     private final CollectionManager cm;
     private final XmlIO io;
 
-    private final Deque<String> history = new ArrayDeque<>(); // last 13
-    private final Deque<String> scriptStack = new ArrayDeque<>(); // recursion guard
+    private final Deque<String> history = new ArrayDeque<>();      // последние 13 команд
+    private final Deque<String> scriptStack = new ArrayDeque<>();  // защита от рекурсии скриптов
 
+    /**
+     * Конструктор.
+     *
+     * @param cm менеджер коллекции
+     * @param io модуль чтения/записи XML
+     */
     public CommandManager(CollectionManager cm, XmlIO io) {
         this.cm = cm;
         this.io = io;
     }
 
+    /**
+     * Обрабатывает одну строку с командой.
+     *
+     * @param line  строка, введённая пользователем или считанная из скрипта
+     * @param input менеджер ввода, используемый для чтения полей объектов
+     * @return {@code true}, если программа должна завершиться (команда exit), иначе {@code false}
+     */
     public boolean handleLine(String line, InputManager input) {
         String[] parts = line.split("\\s+");
         String cmd = parts[0];
 
+        // в историю пишем только имя команды (без аргументов)
         pushHistory(cmd);
 
         try {
@@ -28,7 +54,7 @@ public class CommandManager {
                     return false;
 
                 case "info":
-                    info();
+                    System.out.println(cm.info());
                     return false;
 
                 case "show":
@@ -113,8 +139,7 @@ public class CommandManager {
 
                 case "min_by_climate": {
                     City c = cm.minByClimate();
-                    if (c == null) System.out.println("Коллекция пуста.");
-                    else System.out.println(c);
+                    System.out.println(c == null ? "Коллекция пуста." : c.toString());
                     return false;
                 }
 
@@ -132,6 +157,9 @@ public class CommandManager {
         }
     }
 
+    /**
+     * Печатает справку по командам.
+     */
     private void help() {
         System.out.println("Доступные команды:");
         System.out.println(" help");
@@ -152,10 +180,9 @@ public class CommandManager {
         System.out.println(" print_field_ascending_governor");
     }
 
-    private void info() {
-        System.out.println(cm.info());
-    }
-
+    /**
+     * Выводит все элементы коллекции в строковом представлении.
+     */
     private void show() {
         if (cm.size() == 0) {
             System.out.println("Коллекция пуста.");
@@ -166,11 +193,19 @@ public class CommandManager {
         }
     }
 
+    /**
+     * Добавляет команду в историю (последние 13).
+     *
+     * @param cmd имя команды
+     */
     private void pushHistory(String cmd) {
         history.addLast(cmd);
         while (history.size() > 13) history.removeFirst();
     }
 
+    /**
+     * Печатает историю последних команд.
+     */
     private void printHistory() {
         if (history.isEmpty()) {
             System.out.println("История пуста.");
@@ -179,6 +214,13 @@ public class CommandManager {
         for (String h : history) System.out.println(h);
     }
 
+    /**
+     * Парсит long с понятным сообщением об ошибке.
+     *
+     * @param s         строка
+     * @param fieldName имя поля (для текста ошибки)
+     * @return значение long
+     */
     private long parseLong(String s, String fieldName) {
         try {
             return Long.parseLong(s);
@@ -187,6 +229,16 @@ public class CommandManager {
         }
     }
 
+    /**
+     * Выполняет команды из файла-скрипта.
+     * <p>
+     * Файл должен содержать команды в том же формате, что и интерактивный ввод.
+     * Реализована защита от рекурсивных вызовов скриптов.
+     * </p>
+     *
+     * @param fileName имя (или путь) файла скрипта
+     * @throws Exception если произошла ошибка чтения файла или выполнения команд
+     */
     private void executeScript(String fileName) throws Exception {
         File f = new File(fileName);
         if (!f.exists() || !f.isFile()) {

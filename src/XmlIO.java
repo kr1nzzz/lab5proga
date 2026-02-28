@@ -4,13 +4,33 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
+/**
+ * Сериализация/десериализация коллекции в XML-файл.
+ * <p>
+ * Реализует загрузку коллекции из XML при старте программы и сохранение коллекции в XML.
+ * Чтение файла выполняется через {@link java.util.Scanner}, запись — через {@link java.io.FileWriter}.
+ * При некорректных данных отдельные элементы могут быть пропущены.
+ * </p>
+ */
 public class XmlIO {
+
     private final String filePath;
 
+    /**
+     * Конструктор.
+     *
+     * @param filePath путь к XML-файлу
+     */
     public XmlIO(String filePath) {
         this.filePath = filePath;
     }
 
+    /**
+     * Загружает элементы из XML-файла в переданный {@link CollectionManager}.
+     *
+     * @param cm менеджер коллекции, в который будут загружены данные
+     * @throws Exception если произошла ошибка чтения файла или разбора данных
+     */
     public void loadInto(CollectionManager cm) throws Exception {
         File f = new File(filePath);
         if (!f.exists()) {
@@ -21,7 +41,7 @@ public class XmlIO {
 
         String xml;
         try (Scanner sc = new Scanner(f, StandardCharsets.UTF_8)) {
-            sc.useDelimiter("\\A"); // whole file
+            sc.useDelimiter("\\A"); // читаем весь файл как одну строку
             xml = sc.hasNext() ? sc.next() : "";
         }
 
@@ -38,10 +58,9 @@ public class XmlIO {
             pos = end + "</city>".length();
 
             try {
-                City c = parseCity(block, cm);
+                City c = parseCity(block);
                 if (c != null) cm.getAll().add(c);
             } catch (Exception e) {
-                // skip invalid city
                 System.out.println("Пропуск элемента из файла (ошибка): " + e.getMessage());
             }
         }
@@ -50,6 +69,12 @@ public class XmlIO {
         cm.syncNextIdFromLoadedData();
     }
 
+    /**
+     * Сохраняет текущее состояние коллекции в XML-файл.
+     *
+     * @param cm менеджер коллекции, из которого берутся элементы
+     * @throws Exception если произошла ошибка записи в файл
+     */
     public void saveFrom(CollectionManager cm) throws Exception {
         File f = new File(filePath);
         if (f.exists() && !f.canWrite()) throw new IllegalArgumentException("Нет прав на запись файла.");
@@ -60,10 +85,12 @@ public class XmlIO {
                 fw.write("  <city>\n");
                 fw.write(tag("id", String.valueOf(c.getId())));
                 fw.write(tag("name", escape(c.getName())));
+
                 fw.write("    <coordinates>\n");
                 fw.write(tag("x", String.valueOf(c.getCoordinates().getX())));
                 fw.write(tag("y", String.valueOf(c.getCoordinates().getY())));
                 fw.write("    </coordinates>\n");
+
                 fw.write(tag("creationDate", c.getCreationDate().toString()));
                 fw.write(tag("area", String.valueOf(c.getArea())));
                 fw.write(tag("population", String.valueOf(c.getPopulation())));
@@ -71,6 +98,7 @@ public class XmlIO {
                 fw.write(tag("climate", c.getClimate().name()));
                 fw.write(tag("government", c.getGovernment().name()));
                 fw.write(tag("standardOfLiving", c.getStandardOfLiving() == null ? "" : c.getStandardOfLiving().name()));
+
                 if (c.getGovernor() == null) {
                     fw.write("    <governor></governor>\n");
                 } else {
@@ -80,13 +108,20 @@ public class XmlIO {
                     fw.write(tag("birthday", c.getGovernor().getBirthday() == null ? "" : c.getGovernor().getBirthday().toString()));
                     fw.write("    </governor>\n");
                 }
+
                 fw.write("  </city>\n");
             }
             fw.write("</cities>\n");
         }
     }
 
-    private City parseCity(String block, CollectionManager cm) {
+    /**
+     * Разбирает один блок <city>...</city> в объект City, проверяя ограничения.
+     *
+     * @param block содержимое внутри тега city
+     * @return City
+     */
+    private City parseCity(String block) {
         City c = new City();
 
         long id = Long.parseLong(text(block, "id"));
@@ -99,10 +134,13 @@ public class XmlIO {
 
         String coordsBlock = inner(block, "coordinates");
         Coordinates coords = new Coordinates();
+
         int x = Integer.parseInt(text(coordsBlock, "x"));
         if (x <= -288) throw new IllegalArgumentException("coordinates.x должен быть > -288");
+
         Integer y = Integer.parseInt(text(coordsBlock, "y"));
         if (y > 882) throw new IllegalArgumentException("coordinates.y должен быть <= 882");
+
         coords.setX(x);
         coords.setY(y);
         c.setCoordinates(coords);
@@ -126,15 +164,14 @@ public class XmlIO {
         c.setGovernment(Government.valueOf(text(block, "government")));
 
         String sol = text(block, "standardOfLiving");
-        if (sol == null || sol.trim().isEmpty()) c.setStandardOfLiving(null);
-        else c.setStandardOfLiving(StandardOfLiving.valueOf(sol.trim()));
+        c.setStandardOfLiving((sol == null || sol.trim().isEmpty()) ? null : StandardOfLiving.valueOf(sol.trim()));
 
-        // governor
         String govBlock = inner(block, "governor");
         if (govBlock == null || govBlock.trim().isEmpty()) {
             c.setGovernor(null);
         } else {
             Human h = new Human();
+
             String gname = unescape(text(govBlock, "name"));
             if (gname == null || gname.trim().isEmpty()) throw new IllegalArgumentException("governor.name пустой");
             h.setName(gname.trim());
@@ -144,8 +181,7 @@ public class XmlIO {
             h.setHeight(height);
 
             String b = text(govBlock, "birthday");
-            if (b == null || b.trim().isEmpty()) h.setBirthday(null);
-            else h.setBirthday(LocalDateTime.parse(b.trim()));
+            h.setBirthday((b == null || b.trim().isEmpty()) ? null : LocalDateTime.parse(b.trim()));
 
             c.setGovernor(h);
         }
@@ -153,12 +189,17 @@ public class XmlIO {
         return c;
     }
 
+    /**
+     * Создаёт строку XML-тега <name>value</name>.
+     */
     private static String tag(String name, String value) {
         if (value == null) value = "";
         return "    <" + name + ">" + value + "</" + name + ">\n";
     }
 
-
+    /**
+     * Возвращает текст внутри первого вхождения <tag>...</tag>.
+     */
     private static String text(String src, String tag) {
         if (src == null) return null;
         String open = "<" + tag + ">";
@@ -169,7 +210,9 @@ public class XmlIO {
         return src.substring(a + open.length(), b).trim();
     }
 
-
+    /**
+     * Возвращает внутреннее содержимое тега <tag>...</tag> (без внешних тегов).
+     */
     private static String inner(String src, String tag) {
         if (src == null) return null;
         String open = "<" + tag + ">";
@@ -180,6 +223,9 @@ public class XmlIO {
         return src.substring(a + open.length(), b);
     }
 
+    /**
+     * Экранирует символы для XML.
+     */
     private static String escape(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")
@@ -187,6 +233,9 @@ public class XmlIO {
                 .replace(">", "&gt;");
     }
 
+    /**
+     * Деэкранирует символы XML.
+     */
     private static String unescape(String s) {
         if (s == null) return null;
         return s.replace("&lt;", "<")

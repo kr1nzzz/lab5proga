@@ -1,6 +1,20 @@
 import java.util.Scanner;
 
+/**
+ * Точка входа в приложение.
+ * <p>
+ * Запускает интерактивный режим управления коллекцией городов.
+ * Имя XML-файла для загрузки/сохранения передаётся первым аргументом командной строки.
+ * При старте пытается загрузить коллекцию из файла, затем принимает команды пользователя.
+ * </p>
+ */
 public class Main {
+
+    /**
+     * Главный метод приложения.
+     *
+     * @param args аргументы командной строки; args[0] — путь к XML-файлу
+     */
     public static void main(String[] args) {
         if (args.length < 1) {
             System.out.println("Ошибка: нужно передать имя файла как аргумент командной строки.");
@@ -13,6 +27,7 @@ public class Main {
         CollectionManager collectionManager = new CollectionManager();
         XmlIO xmlIO = new XmlIO(filePath);
 
+        // Автозагрузка при запуске
         try {
             xmlIO.loadInto(collectionManager);
             System.out.println("Коллекция загружена из файла: " + filePath);
@@ -23,7 +38,6 @@ public class Main {
 
         CommandManager commandManager = new CommandManager(collectionManager, xmlIO);
 
-        // interactive mode
         System.out.println("Введите команду (help для справки).");
         Scanner scanner = new Scanner(System.in);
         InputManager input = new InputManager(scanner, true);
@@ -31,6 +45,7 @@ public class Main {
         while (true) {
             System.out.print("> ");
             if (!scanner.hasNextLine()) break;
+
             String line = scanner.nextLine().trim();
             if (line.isEmpty()) continue;
 
