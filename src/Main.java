@@ -13,9 +13,10 @@ public class Main {
     /**
      * Главный метод приложения.
      *
-     * @param args аргументы командной строки; args[0] — путь к XML-файлу
+     * @param args args[0] — путь к XML-файлу
      */
     public static void main(String[] args) {
+        // 1) Проверяем аргументы командной строки
         if (args.length < 1) {
             System.out.println("Ошибка: нужно передать имя файла как аргумент командной строки.");
             System.out.println("Пример: java Main data.xml");
@@ -24,10 +25,11 @@ public class Main {
 
         String filePath = args[0];
 
+        // 2) Создаём основные компоненты приложения
         CollectionManager collectionManager = new CollectionManager();
         XmlIO xmlIO = new XmlIO(filePath);
 
-        // Автозагрузка при запуске
+        // 3) Автоматическая загрузка коллекции при старте
         try {
             xmlIO.loadInto(collectionManager);
             System.out.println("Коллекция загружена из файла: " + filePath);
@@ -36,20 +38,26 @@ public class Main {
             System.out.println("Стартуем с пустой коллекцией.");
         }
 
+        // 4) Менеджер команд (без switch-case, команды в отдельных классах)
         CommandManager commandManager = new CommandManager(collectionManager, xmlIO);
 
-        System.out.println("Введите команду (help для справки).");
+        // 5) Подготавливаем ввод пользователя
         Scanner scanner = new Scanner(System.in);
-        InputManager input = new InputManager(scanner, true);
+        InputManager inputManager = new InputManager(scanner, true);
 
+        // 6) Главный цикл: читаем строки и передаём их менеджеру команд
+        System.out.println("Введите команду (help для справки).");
         while (true) {
             System.out.print("> ");
+
+            // Если ввода больше нет (например, Ctrl+D) — завершаем
             if (!scanner.hasNextLine()) break;
 
             String line = scanner.nextLine().trim();
             if (line.isEmpty()) continue;
 
-            boolean shouldExit = commandManager.handleLine(line, input);
+            // handleLine вернёт true только для команды exit
+            boolean shouldExit = commandManager.handleLine(line, inputManager);
             if (shouldExit) break;
         }
 
