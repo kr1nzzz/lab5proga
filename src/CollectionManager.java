@@ -2,9 +2,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Manages Vector<City>.
- */
 public class CollectionManager {
     private final Vector<City> cities = new Vector<>();
     private final LocalDateTime initTime = LocalDateTime.now();

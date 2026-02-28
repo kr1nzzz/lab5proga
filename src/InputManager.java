@@ -1,9 +1,6 @@
 import java.time.LocalDateTime;
 
-/**
- * Handles reading fields from Scanner with validation.
- * Works both interactive and script mode.
- */
+
 public class InputManager {
     private final java.util.Scanner scanner;
     private final boolean interactive;
@@ -166,16 +163,12 @@ public class InputManager {
     public City readCityForUpdate(CollectionManager cm, long id) {
         City c = new City();
         c.setId(id);                              // keep id
-        c.setCreationDate(LocalDateTime.now());    // simple: regenerate on update (можно иначе, но так проще)
+        c.setCreationDate(LocalDateTime.now());
 
         fillCityFields(c, true);
         return c;
     }
 
-    /**
-     * For remove_lower: we only need a comparable City.
-     * We'll generate id/creationDate automatically.
-     */
     public City readCityForComparison(CollectionManager cm) {
         City c = new City();
         c.setId(cm.generateId());
@@ -207,7 +200,6 @@ public class InputManager {
         c.setGovernment(readEnum("government", Government.class, false));
         c.setStandardOfLiving(readEnum("standardOfLiving", StandardOfLiving.class, true));
 
-        // governor can be null (empty line)
         if (allowGovernorNull) {
             String ans = prompt("Вводить governor? (y/N): ");
             if (ans != null && ans.trim().equalsIgnoreCase("y")) {
@@ -229,9 +221,6 @@ public class InputManager {
         return h;
     }
 
-    /**
-     * For remove_all_by_governor: user enters governor object or null.
-     */
     public Human readGovernorValue() {
         String ans = prompt("Удалять по governor=null? (y/N): ");
         if (ans != null && ans.trim().equalsIgnoreCase("y")) return null;

@@ -1,10 +1,6 @@
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Human model.
- * Comparable: by name, then height, then birthday.
- */
 public class Human implements Comparable<Human> {
     private String name; // not null, not empty
     private Float height; // >0

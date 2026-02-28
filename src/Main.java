@@ -13,7 +13,6 @@ public class Main {
         CollectionManager collectionManager = new CollectionManager();
         XmlIO xmlIO = new XmlIO(filePath);
 
-        // load at startup
         try {
             xmlIO.loadInto(collectionManager);
             System.out.println("Коллекция загружена из файла: " + filePath);

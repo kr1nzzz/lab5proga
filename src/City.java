@@ -1,10 +1,6 @@
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * City model.
- * Default sorting: by name, then by id.
- */
 public class City implements Comparable<City> {
     private long id; // >0, unique, auto
     private String name; // not null, not empty

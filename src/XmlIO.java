@@ -4,10 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
-/**
- * Very simple XML load/save (no external libs).
- * Reads whole file using Scanner, then extracts tags.
- */
 public class XmlIO {
     private final String filePath;
 
@@ -31,7 +27,6 @@ public class XmlIO {
 
         cm.clear();
 
-        // Extract <city>...</city>
         int pos = 0;
         while (true) {
             int start = xml.indexOf("<city>", pos);
@@ -57,7 +52,6 @@ public class XmlIO {
 
     public void saveFrom(CollectionManager cm) throws Exception {
         File f = new File(filePath);
-        // try create if not exists
         if (f.exists() && !f.canWrite()) throw new IllegalArgumentException("Нет прав на запись файла.");
 
         try (FileWriter fw = new FileWriter(f, StandardCharsets.UTF_8)) {
@@ -164,7 +158,7 @@ public class XmlIO {
         return "    <" + name + ">" + value + "</" + name + ">\n";
     }
 
-    // Extract text inside <tag>...</tag> (first occurrence)
+
     private static String text(String src, String tag) {
         if (src == null) return null;
         String open = "<" + tag + ">";
@@ -175,7 +169,7 @@ public class XmlIO {
         return src.substring(a + open.length(), b).trim();
     }
 
-    // Extract inner block <tag> ... </tag> including nested tags
+
     private static String inner(String src, String tag) {
         if (src == null) return null;
         String open = "<" + tag + ">";

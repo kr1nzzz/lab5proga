@@ -3,9 +3,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/**
- * Parses and executes commands.
- */
 public class CommandManager {
     private final CollectionManager cm;
     private final XmlIO io;
@@ -22,7 +19,6 @@ public class CommandManager {
         String[] parts = line.split("\\s+");
         String cmd = parts[0];
 
-        // history stores only command names (without args)
         pushHistory(cmd);
 
         try {
@@ -214,7 +210,6 @@ public class CommandManager {
                 String cmdLine = line.trim();
                 if (cmdLine.isEmpty()) continue;
 
-                // печать выполняемой команды (удобно при проверке)
                 System.out.println("> " + cmdLine);
 
                 boolean exit = handleLine(cmdLine, scriptInput);
