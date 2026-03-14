@@ -13,6 +13,6 @@ public class ClearCommand implements Command {
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         ctx.cm.clear();
         System.out.println("Коллекция очищена.");
-        return false;
+        return true;
     }
 }

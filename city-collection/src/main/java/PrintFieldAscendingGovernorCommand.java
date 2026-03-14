@@ -12,6 +12,6 @@ public class PrintFieldAscendingGovernorCommand implements Command {
     @Override
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         ctx.cm.printFieldAscendingGovernor();
-        return false;
+        return true;
     }
 }

@@ -19,6 +19,6 @@ public class HelpCommand implements Command {
         for (Command c : ctx.manager.allCommands()) {
             System.out.println(" " + c.name() + " : " + c.description());
         }
-        return false;
+        return true;
     }
 }

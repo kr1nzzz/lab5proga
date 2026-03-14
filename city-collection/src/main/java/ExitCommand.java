@@ -12,6 +12,6 @@ public class ExitCommand implements Command {
     @Override
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         System.out.println("Выход без сохранения.");
-        return true;
+        return false;
     }
 }

@@ -1,50 +1,61 @@
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.Comparator;
 import java.util.Vector;
-import java.util.stream.Collectors;
 
 /**
- * Менеджер коллекции городов.
+ * Управляет коллекцией объектов {@link City}.
  * <p>
- * Хранит коллекцию типа {@link java.util.Vector} и предоставляет операции,
- * соответствующие командам пользователя (add, update, remove, clear и т.д.).
- * Также отвечает за сортировку по умолчанию и генерацию уникальных идентификаторов.
+ * Отвечает за хранение элементов, генерацию идентификаторов,
+ * добавление, обновление, удаление, сортировку и выполнение
+ * операций над коллекцией.
  * </p>
+ *
+ * <p>Коллекция хранится в виде {@code Vector<City>}.</p>
  */
 public class CollectionManager {
-
+    /**
+     * Коллекция городов.
+     */
     private final Vector<City> cities = new Vector<>();
+
+    /**
+     * Время инициализации менеджера коллекции.
+     */
     private final LocalDateTime initTime = LocalDateTime.now();
+
+    /**
+     * Следующий идентификатор, который будет выдан новому элементу.
+     */
     private long nextId = 1;
 
     /**
-     * Возвращает коллекцию (Vector) для чтения/вывода элементов.
+     * Возвращает все элементы коллекции.
      *
-     * @return Vector городов
+     * @return коллекция городов
      */
     public Vector<City> getAll() {
         return cities;
     }
 
     /**
-     * @return количество элементов в коллекции
+     * Возвращает количество элементов в коллекции.
+     *
+     * @return размер коллекции
      */
     public int size() {
         return cities.size();
     }
 
     /**
-     * Формирует информацию о коллекции (тип, время инициализации, размер).
+     * Возвращает информацию о коллекции.
      *
-     * @return строка с информацией о коллекции
+     * @return строка с информацией о типе коллекции, времени инициализации и количестве элементов
      */
     public String info() {
-        return "Тип коллекции: " + cities.getClass().getName() + "\n" +
-                "Дата инициализации: " + initTime + "\n" +
-                "Количество элементов: " + cities.size();
+        return "Тип коллекции: " + cities.getClass().getName()
+                + "\nВремя инициализации: " + initTime
+                + "\nКоличество элементов: " + cities.size();
     }
 
     /**
@@ -55,65 +66,79 @@ public class CollectionManager {
     }
 
     /**
-     * Генерирует новый уникальный идентификатор для города.
+     * Генерирует новый уникальный идентификатор.
      *
-     * @return уникальный id (> 0)
+     * @return новый идентификатор
      */
-    public synchronized long generateId() {
+    public long generateId() {
         return nextId++;
     }
 
     /**
-     * Синхронизирует счётчик id после загрузки из файла.
-     * <p>
-     * Устанавливает следующий выдаваемый id как (maxId + 1),
-     * чтобы не возникало конфликтов с уже существующими элементами.
-     * </p>
+     * Синхронизирует следующее значение идентификатора
+     * на основе уже загруженных из файла данных.
      */
     public void syncNextIdFromLoadedData() {
-        long max = 0;
-        for (City c : cities) {
-            if (c.getId() > max) max = c.getId();
+        long maxId = 0;
+        for (City city : cities) {
+            if (city.getId() > maxId) {
+                maxId = city.getId();
+            }
         }
-        nextId = Math.max(1, max + 1);
+        nextId = maxId + 1;
     }
 
     /**
-     * Добавляет новый город в коллекцию и сортирует коллекцию по умолчанию.
+     * Добавляет новый элемент в коллекцию.
+     * <p>
+     * Если у объекта ещё не установлен корректный идентификатор,
+     * он будет сгенерирован автоматически.
+     * </p>
      *
-     * @param city добавляемый объект {@link City}
-     * @throws IllegalArgumentException если {@code city == null}
+     * @param city добавляемый город
      */
     public void add(City city) {
-        if (city == null) throw new IllegalArgumentException("Нельзя добавить null.");
-
-        if (containsId(city.getId())) {
+        if (city.getId() <= 0 || containsId(city.getId())) {
             city.setId(generateId());
         }
-
+        if (city.getCreationDate() == null) {
+            city.setCreationDate(LocalDateTime.now());
+        }
         cities.add(city);
-        sortDefault();
     }
 
     /**
-     * Обновляет город по заданному id.
+     * Проверяет, существует ли элемент с указанным идентификатором.
      *
-     * @param id      идентификатор обновляемого элемента
-     * @param newCity новое значение элемента
+     * @param id идентификатор элемента
+     * @return {@code true}, если элемент найден, иначе {@code false}
+     */
+    public boolean containsId(long id) {
+        for (City city : cities) {
+            if (city.getId() == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Обновляет элемент коллекции по идентификатору.
+     *
+     * @param id идентификатор обновляемого элемента
+     * @param newCity новый объект города
      * @return {@code true}, если элемент найден и обновлён, иначе {@code false}
      */
     public boolean update(long id, City newCity) {
         for (int i = 0; i < cities.size(); i++) {
-            City old = cities.get(i);
-            if (old.getId() == id) {
+            if (cities.get(i).getId() == id) {
                 newCity.setId(id);
 
                 if (newCity.getCreationDate() == null) {
-                    newCity.setCreationDate(LocalDateTime.now());
+                    newCity.setCreationDate(cities.get(i).getCreationDate());
                 }
 
                 cities.set(i, newCity);
-                sortDefault();
                 return true;
             }
         }
@@ -121,17 +146,15 @@ public class CollectionManager {
     }
 
     /**
-     * Удаляет город по id.
+     * Удаляет элемент из коллекции по идентификатору.
      *
      * @param id идентификатор удаляемого элемента
-     * @return {@code true}, если элемент был удалён, иначе {@code false}
+     * @return {@code true}, если элемент найден и удалён, иначе {@code false}
      */
     public boolean removeById(long id) {
-        Iterator<City> it = cities.iterator();
-        while (it.hasNext()) {
-            City c = it.next();
-            if (c.getId() == id) {
-                it.remove();
+        for (int i = 0; i < cities.size(); i++) {
+            if (cities.get(i).getId() == id) {
+                cities.remove(i);
                 return true;
             }
         }
@@ -139,93 +162,97 @@ public class CollectionManager {
     }
 
     /**
-     * Переворачивает текущий порядок элементов коллекции.
+     * Разворачивает порядок элементов в коллекции.
      */
     public void reorder() {
         Collections.reverse(cities);
     }
 
     /**
-     * Удаляет все элементы, которые меньше заданного (по compareTo в City).
+     * Удаляет из коллекции все элементы, меньшие заданного.
+     * <p>
+     * Сравнение выполняется в соответствии с естественным порядком объектов {@link City}.
+     * </p>
      *
-     * @param pivot опорный элемент для сравнения
+     * @param pivot элемент, относительно которого выполняется сравнение
      * @return количество удалённых элементов
      */
     public int removeLower(City pivot) {
-        if (pivot == null) return 0;
         int before = cities.size();
-        cities.removeIf(c -> c.compareTo(pivot) < 0);
+        cities.removeIf(city -> city.compareTo(pivot) < 0);
         return before - cities.size();
     }
 
     /**
-     * Удаляет все города, у которых governor равен заданному (или null).
+     * Удаляет из коллекции все элементы, значение поля governor которых равно заданному.
      *
-     * @param gov губернатор (может быть null)
+     * @param gov значение губернатора для сравнения
      * @return количество удалённых элементов
      */
     public int removeAllByGovernor(Human gov) {
         int before = cities.size();
-        cities.removeIf(c -> Objects.equals(c.getGovernor(), gov));
+        cities.removeIf(city -> {
+            Human currentGovernor = city.getGovernor();
+            if (currentGovernor == null && gov == null) {
+                return true;
+            }
+            if (currentGovernor == null || gov == null) {
+                return false;
+            }
+            return currentGovernor.equals(gov);
+        });
         return before - cities.size();
     }
 
     /**
-     * Возвращает любой город с минимальным значением climate.
+     * Возвращает элемент с минимальным значением поля climate.
      *
-     * @return город с минимальным climate или {@code null}, если коллекция пуста
+     * @return город с минимальным климатом или {@code null}, если коллекция пуста
      */
     public City minByClimate() {
-        if (cities.isEmpty()) return null;
+        if (cities.isEmpty()) {
+            return null;
+        }
 
         City min = null;
-        for (City c : cities) {
-            if (min == null || c.getClimate().ordinal() < min.getClimate().ordinal()) {
-                min = c;
+        for (City city : cities) {
+            if (city.getClimate() == null) {
+                continue;
+            }
+            if (min == null || city.getClimate().compareTo(min.getClimate()) < 0) {
+                min = city;
             }
         }
         return min;
     }
 
     /**
-     * Выводит значения поля governor всех элементов в порядке возрастания.
-     * Если список пуст (нет governor или коллекция пуста) — выводит сообщение.
+     * Выводит значения поля governor элементов коллекции
+     * в порядке возрастания.
      */
     public void printFieldAscendingGovernor() {
-        List<Human> list = cities.stream()
-                .map(City::getGovernor)
-                .filter(Objects::nonNull)
-                .sorted()
-                .collect(Collectors.toList());
+        Vector<Human> governors = new Vector<>();
 
-        if (list.isEmpty()) {
-            System.out.println("Нет значений governor (все null или коллекция пуста).");
-            return;
+        for (City city : cities) {
+            if (city.getGovernor() != null) {
+                governors.add(city.getGovernor());
+            }
         }
 
-        for (Human h : list) {
-            System.out.println(h);
+        governors.sort(Comparator.naturalOrder());
+
+        for (Human governor : governors) {
+            System.out.println(governor);
         }
     }
 
     /**
-     * Сортировка по умолчанию (требование задания).
-     * City implements Comparable<City>.
+     * Сортирует коллекцию в естественном порядке.
+     * <p>
+     * Для сравнения используется реализация {@link Comparable} в классе {@link City}.
+     * </p>
      */
     public void sortDefault() {
         Collections.sort(cities);
-    }
-
-    /**
-     * Проверяет наличие id в коллекции.
-     *
-     * @param id проверяемый id
-     * @return true если такой id уже есть, иначе false
-     */
-    private boolean containsId(long id) {
-        for (City c : cities) {
-            if (c.getId() == id) return true;
-        }
-        return false;
     }
 }

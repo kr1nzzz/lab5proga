@@ -12,6 +12,6 @@ public class HistoryCommand implements Command {
     @Override
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         ctx.manager.printHistory();
-        return false;
+        return true;
     }
 }

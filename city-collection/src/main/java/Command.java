@@ -1,26 +1,30 @@
 /**
- * Интерфейс команды. Каждая команда - отдельный класс.
+ * Интерфейс команды приложения.
  */
 public interface Command {
 
     /**
-     * @return имя команды (например: "info")
+     * Возвращает имя команды.
+     *
+     * @return имя команды
      */
     String name();
 
     /**
-     * @return короткое описание для help
+     * Возвращает описание команды.
+     *
+     * @return описание команды
      */
     String description();
 
     /**
-     * Выполнить команду.
+     * Выполняет команду.
      *
-     * @param args  аргументы команды (всё после имени команды)
-     * @param input менеджер ввода (для чтения объектов)
-     * @param ctx   контекст (коллекция, io, менеджер команд)
-     * @return true если нужно завершить программу (exit), иначе false
-     * @throws Exception если команда упала с ошибкой
+     * @param args аргументы команды
+     * @param input менеджер ввода
+     * @param ctx контекст выполнения
+     * @return {@code true}, если программа должна продолжить работу,
+     * иначе {@code false}
      */
-    boolean execute(String[] args, InputManager input, CommandContext ctx) throws Exception;
+    boolean execute(String[] args, InputManager input, CommandContext ctx);
 }

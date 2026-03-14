@@ -13,6 +13,6 @@ public class ReorderCommand implements Command {
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         ctx.cm.reorder();
         System.out.println("Порядок коллекции обращён.");
-        return false;
+        return true;
     }
 }

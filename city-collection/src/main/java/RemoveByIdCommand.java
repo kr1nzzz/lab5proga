@@ -13,11 +13,11 @@ public class RemoveByIdCommand implements Command {
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         if (args.length < 1) {
             System.out.println("Использование: remove_by_id id");
-            return false;
+            return true;
         }
         long id = ctx.manager.parseLongArg(args[0], "id");
         boolean ok = ctx.cm.removeById(id);
         System.out.println(ok ? "Удалено." : "Элемент с таким id не найден.");
-        return false;
+        return true;
     }
 }

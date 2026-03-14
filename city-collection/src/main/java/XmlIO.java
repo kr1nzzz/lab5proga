@@ -1,23 +1,30 @@
 import java.io.File;
-import java.io.FileWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
-import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Сериализация/десериализация коллекции в XML-файл.
+ * Выполняет загрузку коллекции из XML-файла и сохранение коллекции в XML-файл.
  * <p>
- * Реализует загрузку коллекции из XML при старте программы и сохранение коллекции в XML.
- * Чтение файла выполняется через {@link java.util.Scanner}, запись — через {@link java.io.FileWriter}.
- * При некорректных данных отдельные элементы могут быть пропущены.
+ * Класс реализует простую ручную сериализацию и десериализацию объектов {@link City}
+ * без использования сторонних библиотек.
+ * </p>
+ *
+ * <p>
+ * При загрузке XML-файл читается целиком, затем из него извлекаются блоки {@code <city>...</city>},
+ * после чего каждый блок преобразуется в объект {@link City}.
  * </p>
  */
 public class XmlIO {
-
+    /**
+     * Путь к XML-файлу.
+     */
     private final String filePath;
 
     /**
-     * Конструктор.
+     * Создаёт объект для работы с указанным XML-файлом.
      *
      * @param filePath путь к XML-файлу
      */
@@ -26,218 +33,255 @@ public class XmlIO {
     }
 
     /**
-     * Загружает элементы из XML-файла в переданный {@link CollectionManager}.
+     * Загружает данные из XML-файла в коллекцию.
+     * <p>
+     * Перед загрузкой текущая коллекция очищается.
+     * Если файл не существует, не является обычным файлом, недоступен для чтения,
+     * пуст или не содержит ни одного элемента {@code <city>}, выбрасывается исключение.
+     * </p>
      *
      * @param cm менеджер коллекции, в который будут загружены данные
-     * @throws Exception если произошла ошибка чтения файла или разбора данных
+     * @throws Exception если произошла ошибка чтения файла или разбора XML
      */
     public void loadInto(CollectionManager cm) throws Exception {
         File f = new File(filePath);
-        if (!f.exists()) {
-            cm.clear();
-            return;
-        }
-        if (!f.canRead()) throw new IllegalArgumentException("Нет прав на чтение файла.");
 
-        String xml;
-        try (Scanner sc = new Scanner(f, StandardCharsets.UTF_8)) {
-            sc.useDelimiter("\\A"); // читаем весь файл как одну строку
-            xml = sc.hasNext() ? sc.next() : "";
+        if (!f.exists()) {
+            throw new IllegalArgumentException("Файл не найден: " + f.getAbsolutePath());
+        }
+
+        if (!f.isFile()) {
+            throw new IllegalArgumentException("Указанный путь не является файлом: " + f.getAbsolutePath());
+        }
+
+        if (!f.canRead()) {
+            throw new IllegalArgumentException("Файл нельзя прочитать: " + f.getAbsolutePath());
+        }
+
+        String xml = Files.readString(f.toPath(), StandardCharsets.UTF_8).trim();
+
+        if (xml.isEmpty()) {
+            throw new IllegalArgumentException("XML-файл пустой.");
         }
 
         cm.clear();
 
-        int pos = 0;
-        while (true) {
-            int start = xml.indexOf("<city>", pos);
-            if (start < 0) break;
-            int end = xml.indexOf("</city>", start);
-            if (end < 0) break;
+        Pattern cityPattern = Pattern.compile("<city>(.*?)</city>", Pattern.DOTALL);
+        Matcher matcher = cityPattern.matcher(xml);
 
-            String block = xml.substring(start + "<city>".length(), end).trim();
-            pos = end + "</city>".length();
-
-            try {
-                City c = parseCity(block);
-                if (c != null) cm.getAll().add(c);
-            } catch (Exception e) {
-                System.out.println("Пропуск элемента из файла (ошибка): " + e.getMessage());
-            }
+        int loaded = 0;
+        while (matcher.find()) {
+            String block = matcher.group(1).trim();
+            City city = parseCity(block);
+            cm.add(city);
+            loaded++;
         }
 
-        cm.sortDefault();
         cm.syncNextIdFromLoadedData();
+
+        if (loaded == 0) {
+            throw new IllegalArgumentException("В XML не найдено ни одного элемента <city>.");
+        }
     }
 
     /**
-     * Сохраняет текущее состояние коллекции в XML-файл.
+     * Сохраняет коллекцию в XML-файл.
      *
-     * @param cm менеджер коллекции, из которого берутся элементы
+     * @param cm менеджер коллекции, данные которого нужно сохранить
      * @throws Exception если произошла ошибка записи в файл
      */
     public void saveFrom(CollectionManager cm) throws Exception {
-        File f = new File(filePath);
-        if (f.exists() && !f.canWrite()) throw new IllegalArgumentException("Нет прав на запись файла.");
+        StringBuilder sb = new StringBuilder();
+        sb.append("<cities>\n");
 
-        try (FileWriter fw = new FileWriter(f, StandardCharsets.UTF_8)) {
-            fw.write("<cities>\n");
-            for (City c : cm.getAll()) {
-                fw.write("  <city>\n");
-                fw.write(tag("id", String.valueOf(c.getId())));
-                fw.write(tag("name", escape(c.getName())));
+        for (City city : cm.getAll()) {
+            sb.append("  <city>\n");
+            sb.append("    ").append(tag("id", String.valueOf(city.getId()))).append("\n");
+            sb.append("    ").append(tag("name", city.getName())).append("\n");
 
-                fw.write("    <coordinates>\n");
-                fw.write(tag("x", String.valueOf(c.getCoordinates().getX())));
-                fw.write(tag("y", String.valueOf(c.getCoordinates().getY())));
-                fw.write("    </coordinates>\n");
+            sb.append("    <coordinates>\n");
+            sb.append("      ").append(tag("x", String.valueOf(city.getCoordinates().getX()))).append("\n");
+            sb.append("      ").append(tag("y", String.valueOf(city.getCoordinates().getY()))).append("\n");
+            sb.append("    </coordinates>\n");
 
-                fw.write(tag("creationDate", c.getCreationDate().toString()));
-                fw.write(tag("area", String.valueOf(c.getArea())));
-                fw.write(tag("population", String.valueOf(c.getPopulation())));
-                fw.write(tag("metersAboveSeaLevel", String.valueOf(c.getMetersAboveSeaLevel())));
-                fw.write(tag("climate", c.getClimate().name()));
-                fw.write(tag("government", c.getGovernment().name()));
-                fw.write(tag("standardOfLiving", c.getStandardOfLiving() == null ? "" : c.getStandardOfLiving().name()));
+            sb.append("    ").append(tag("creationDate", String.valueOf(city.getCreationDate()))).append("\n");
+            sb.append("    ").append(tag("area", String.valueOf(city.getArea()))).append("\n");
+            sb.append("    ").append(tag("population", String.valueOf(city.getPopulation()))).append("\n");
+            sb.append("    ").append(tag("metersAboveSeaLevel", String.valueOf(city.getMetersAboveSeaLevel()))).append("\n");
+            sb.append("    ").append(tag("climate", String.valueOf(city.getClimate()))).append("\n");
+            sb.append("    ").append(tag("government", String.valueOf(city.getGovernment()))).append("\n");
+            sb.append("    ").append(tag("standardOfLiving", String.valueOf(city.getStandardOfLiving()))).append("\n");
 
-                if (c.getGovernor() == null) {
-                    fw.write("    <governor></governor>\n");
-                } else {
-                    fw.write("    <governor>\n");
-                    fw.write(tag("name", escape(c.getGovernor().getName())));
-                    fw.write(tag("height", String.valueOf(c.getGovernor().getHeight())));
-                    fw.write(tag("birthday", c.getGovernor().getBirthday() == null ? "" : c.getGovernor().getBirthday().toString()));
-                    fw.write("    </governor>\n");
-                }
-
-                fw.write("  </city>\n");
+            if (city.getGovernor() != null) {
+                sb.append("    <governor>\n");
+                sb.append("      ").append(tag("name", city.getGovernor().getName())).append("\n");
+                sb.append("      ").append(tag("height", String.valueOf(city.getGovernor().getHeight()))).append("\n");
+                sb.append("      ").append(tag("birthday", String.valueOf(city.getGovernor().getBirthday()))).append("\n");
+                sb.append("    </governor>\n");
             }
-            fw.write("</cities>\n");
+
+            sb.append("  </city>\n");
         }
+
+        sb.append("</cities>\n");
+
+        Files.writeString(new File(filePath).toPath(), sb.toString(), StandardCharsets.UTF_8);
     }
 
     /**
-     * Разбирает один блок <city>...</city> в объект City, проверяя ограничения.
+     * Преобразует XML-блок одного города в объект {@link City}.
      *
-     * @param block содержимое внутри тега city
-     * @return City
+     * @param block XML-фрагмент, содержащий данные одного города
+     * @return объект города, созданный на основе XML-данных
+     * @throws Exception если обязательные данные отсутствуют или не могут быть преобразованы
      */
-    private City parseCity(String block) {
-        City c = new City();
+    private City parseCity(String block) throws Exception {
+        City city = new City();
 
-        long id = Long.parseLong(text(block, "id"));
-        if (id <= 0) throw new IllegalArgumentException("id должен быть > 0");
-        c.setId(id);
+        city.setId(Long.parseLong(text(block, "id")));
+        city.setName(text(block, "name"));
 
-        String name = unescape(text(block, "name"));
-        if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("name пустой");
-        c.setName(name.trim());
+        String coordinatesBlock = inner(block, "coordinates");
+        Coordinates coordinates = new Coordinates();
+        coordinates.setX(Integer.parseInt(text(coordinatesBlock, "x")));
 
-        String coordsBlock = inner(block, "coordinates");
-        Coordinates coords = new Coordinates();
+        String yText = text(coordinatesBlock, "y");
+        coordinates.setY(yText == null || yText.isBlank() ? null : Integer.valueOf(yText));
 
-        int x = Integer.parseInt(text(coordsBlock, "x"));
-        if (x <= -288) throw new IllegalArgumentException("coordinates.x должен быть > -288");
+        city.setCoordinates(coordinates);
 
-        Integer y = Integer.parseInt(text(coordsBlock, "y"));
-        if (y > 882) throw new IllegalArgumentException("coordinates.y должен быть <= 882");
+        String creationDateText = text(block, "creationDate");
+        city.setCreationDate(
+                creationDateText == null || creationDateText.isBlank()
+                        ? LocalDateTime.now()
+                        : LocalDateTime.parse(creationDateText)
+        );
 
-        coords.setX(x);
-        coords.setY(y);
-        c.setCoordinates(coords);
+        String areaText = text(block, "area");
+        city.setArea(areaText == null || areaText.isBlank() ? null : Double.valueOf(areaText));
 
-        String cd = text(block, "creationDate");
-        LocalDateTime creationDate = (cd == null || cd.isEmpty()) ? LocalDateTime.now() : LocalDateTime.parse(cd);
-        c.setCreationDate(creationDate);
+        String populationText = text(block, "population");
+        city.setPopulation(populationText == null || populationText.isBlank() ? null : Long.valueOf(populationText));
 
-        double area = Double.parseDouble(text(block, "area"));
-        if (area <= 0) throw new IllegalArgumentException("area должен быть > 0");
-        c.setArea(area);
+        city.setMetersAboveSeaLevel(Long.parseLong(text(block, "metersAboveSeaLevel")));
 
-        long population = Long.parseLong(text(block, "population"));
-        if (population <= 0) throw new IllegalArgumentException("population должен быть > 0");
-        c.setPopulation(population);
+        String climateText = text(block, "climate");
+        city.setClimate(climateText == null || climateText.isBlank() ? null : Climate.valueOf(climateText));
 
-        long masl = Long.parseLong(text(block, "metersAboveSeaLevel"));
-        c.setMetersAboveSeaLevel(masl);
+        String governmentText = text(block, "government");
+        city.setGovernment(governmentText == null || governmentText.isBlank() ? null : Government.valueOf(governmentText));
 
-        c.setClimate(Climate.valueOf(text(block, "climate")));
-        c.setGovernment(Government.valueOf(text(block, "government")));
+        String standardOfLivingText = text(block, "standardOfLiving");
+        city.setStandardOfLiving(
+                standardOfLivingText == null || standardOfLivingText.isBlank()
+                        ? null
+                        : StandardOfLiving.valueOf(standardOfLivingText)
+        );
 
-        String sol = text(block, "standardOfLiving");
-        c.setStandardOfLiving((sol == null || sol.trim().isEmpty()) ? null : StandardOfLiving.valueOf(sol.trim()));
+        String governorBlock = inner(block, "governor");
+        if (governorBlock != null && !governorBlock.isBlank()) {
+            Human governor = new Human();
+            governor.setName(text(governorBlock, "name"));
 
-        String govBlock = inner(block, "governor");
-        if (govBlock == null || govBlock.trim().isEmpty()) {
-            c.setGovernor(null);
-        } else {
-            Human h = new Human();
+            String heightText = text(governorBlock, "height");
+            governor.setHeight(heightText == null || heightText.isBlank() ? null : Float.valueOf(heightText));
 
-            String gname = unescape(text(govBlock, "name"));
-            if (gname == null || gname.trim().isEmpty()) throw new IllegalArgumentException("governor.name пустой");
-            h.setName(gname.trim());
+            String birthdayText = text(governorBlock, "birthday");
+            governor.setBirthday(
+                    birthdayText == null || birthdayText.isBlank()
+                            ? null
+                            : LocalDateTime.parse(birthdayText)
+            );
 
-            float height = Float.parseFloat(text(govBlock, "height"));
-            if (height <= 0) throw new IllegalArgumentException("governor.height должен быть > 0");
-            h.setHeight(height);
-
-            String b = text(govBlock, "birthday");
-            h.setBirthday((b == null || b.trim().isEmpty()) ? null : LocalDateTime.parse(b.trim()));
-
-            c.setGovernor(h);
+            city.setGovernor(governor);
         }
 
-        return c;
+        return city;
     }
 
     /**
-     * Создаёт строку XML-тега <name>value</name>.
+     * Формирует XML-тег с указанным именем и значением.
+     *
+     * @param name имя XML-тега
+     * @param value значение внутри тега
+     * @return строка вида {@code <name>value</name>}
      */
     private static String tag(String name, String value) {
-        if (value == null) value = "";
-        return "    <" + name + ">" + value + "</" + name + ">\n";
+        return "<" + name + ">" + escape(value) + "</" + name + ">";
     }
 
     /**
-     * Возвращает текст внутри первого вхождения <tag>...</tag>.
+     * Извлекает текстовое содержимое первого найденного XML-тега.
+     *
+     * @param src исходная строка, содержащая XML
+     * @param tag имя XML-тега
+     * @return текст внутри тега или {@code null}, если тег не найден
      */
     private static String text(String src, String tag) {
-        if (src == null) return null;
-        String open = "<" + tag + ">";
-        String close = "</" + tag + ">";
-        int a = src.indexOf(open);
-        int b = src.indexOf(close);
-        if (a < 0 || b < 0 || b < a) return null;
-        return src.substring(a + open.length(), b).trim();
+        if (src == null) {
+            return null;
+        }
+
+        Pattern p = Pattern.compile("<" + tag + ">(.*?)</" + tag + ">", Pattern.DOTALL);
+        Matcher m = p.matcher(src);
+
+        if (!m.find()) {
+            return null;
+        }
+
+        return unescape(m.group(1).trim());
     }
 
     /**
-     * Возвращает внутреннее содержимое тега <tag>...</tag> (без внешних тегов).
+     * Извлекает внутреннее содержимое первого найденного XML-тега,
+     * включая вложенные теги.
+     *
+     * @param src исходная строка, содержащая XML
+     * @param tag имя XML-тега
+     * @return содержимое внутри тега или {@code null}, если тег не найден
      */
     private static String inner(String src, String tag) {
-        if (src == null) return null;
-        String open = "<" + tag + ">";
-        String close = "</" + tag + ">";
-        int a = src.indexOf(open);
-        int b = src.indexOf(close);
-        if (a < 0 || b < 0 || b < a) return null;
-        return src.substring(a + open.length(), b);
+        if (src == null) {
+            return null;
+        }
+
+        Pattern p = Pattern.compile("<" + tag + ">(.*?)</" + tag + ">", Pattern.DOTALL);
+        Matcher m = p.matcher(src);
+
+        if (!m.find()) {
+            return null;
+        }
+
+        return m.group(1).trim();
     }
 
     /**
-     * Экранирует символы для XML.
+     * Экранирует специальные символы для безопасной записи в XML.
+     *
+     * @param s исходная строка
+     * @return строка с заменёнными XML-спецсимволами
      */
     private static String escape(String s) {
-        if (s == null) return "";
+        if (s == null) {
+            return "";
+        }
+
         return s.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;");
     }
 
     /**
-     * Деэкранирует символы XML.
+     * Выполняет обратное преобразование XML-сущностей в обычные символы.
+     *
+     * @param s строка с XML-сущностями
+     * @return строка после декодирования XML-сущностей
      */
     private static String unescape(String s) {
-        if (s == null) return null;
+        if (s == null) {
+            return null;
+        }
+
         return s.replace("&lt;", "<")
                 .replace("&gt;", ">")
                 .replace("&amp;", "&");

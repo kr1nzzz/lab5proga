@@ -14,6 +14,6 @@ public class AddCommand implements Command {
         City city = input.readCityForAdd(ctx.cm);
         ctx.cm.add(city);
         System.out.println("Элемент добавлен. id=" + city.getId());
-        return false;
+        return true;
     }
 }

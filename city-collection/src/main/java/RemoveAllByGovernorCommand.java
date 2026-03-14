@@ -14,6 +14,6 @@ public class RemoveAllByGovernorCommand implements Command {
         Human gov = input.readGovernorValue();
         int removed = ctx.cm.removeAllByGovernor(gov);
         System.out.println("Удалено элементов: " + removed);
-        return false;
+        return true;
     }
 }

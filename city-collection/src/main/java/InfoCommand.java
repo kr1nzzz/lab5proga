@@ -14,6 +14,6 @@ public class InfoCommand implements Command {
     @Override
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         System.out.println(ctx.cm.info());
-        return false;
+        return true;
     }
 }

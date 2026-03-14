@@ -14,6 +14,6 @@ public class RemoveLowerCommand implements Command {
         City pivot = input.readCityForComparison(ctx.cm);
         int removed = ctx.cm.removeLower(pivot);
         System.out.println("Удалено элементов: " + removed);
-        return false;
+        return true;
     }
 }

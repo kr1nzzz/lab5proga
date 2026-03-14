@@ -1,66 +1,63 @@
+import java.io.File;
 import java.util.Scanner;
 
 /**
  * Точка входа в приложение.
- * <p>
- * Запускает интерактивный режим управления коллекцией городов.
- * Имя XML-файла для загрузки/сохранения передаётся первым аргументом командной строки.
- * При старте пытается загрузить коллекцию из файла, затем принимает команды пользователя.
- * </p>
  */
 public class Main {
 
     /**
-     * Главный метод приложения.
+     * Запускает приложение.
      *
-     * @param args args[0] — путь к XML-файлу
+     * @param args аргументы командной строки
      */
     public static void main(String[] args) {
-        // 1) Проверяем аргументы командной строки
-        if (args.length < 1) {
-            System.out.println("Ошибка: нужно передать имя файла как аргумент командной строки.");
-            System.out.println("Пример: java Main data.xml");
+        if (args.length == 0) {
+            System.err.println("Не указан путь к XML-файлу.");
+            System.err.println("Пример запуска: java Main src/main/java/data.xml");
             return;
         }
 
         String filePath = args[0];
-
-        // 2) Создаём основные компоненты приложения
         CollectionManager collectionManager = new CollectionManager();
         XmlIO xmlIO = new XmlIO(filePath);
 
-        // 3) Автоматическая загрузка коллекции при старте
         try {
             xmlIO.loadInto(collectionManager);
-            System.out.println("Коллекция загружена из файла: " + filePath);
+            System.out.println("Коллекция успешно загружена из файла: "
+                    + new File(filePath).getAbsolutePath());
         } catch (Exception e) {
-            System.out.println("Предупреждение: не удалось загрузить коллекцию: " + e.getMessage());
-            System.out.println("Стартуем с пустой коллекцией.");
+            System.err.println("Ошибка загрузки XML: " + e.getMessage());
+            return;
         }
 
-        // 4) Менеджер команд (без switch-case, команды в отдельных классах)
         CommandManager commandManager = new CommandManager(collectionManager, xmlIO);
-
-        // 5) Подготавливаем ввод пользователя
+        InputManager inputManager = new InputManager(new Scanner(System.in), true);
         Scanner scanner = new Scanner(System.in);
-        InputManager inputManager = new InputManager(scanner, true);
 
-        // 6) Главный цикл: читаем строки и передаём их менеджеру команд
-        System.out.println("Введите команду (help для справки).");
+        System.out.println("Введите команду. help - список команд.");
+
         while (true) {
-            System.out.print("> ");
+            try {
+                System.out.print("> ");
 
-            // Если ввода больше нет (например, Ctrl+D) — завершаем
-            if (!scanner.hasNextLine()) break;
+                if (!scanner.hasNextLine()) {
+                    break;
+                }
 
-            String line = scanner.nextLine().trim();
-            if (line.isEmpty()) continue;
+                String line = scanner.nextLine().trim();
+                if (line.isEmpty()) {
+                    continue;
+                }
 
-            // handleLine вернёт true только для команды exit
-            boolean shouldExit = commandManager.handleLine(line, inputManager);
-            if (shouldExit) break;
+                boolean shouldContinue = commandManager.handleLine(line, inputManager);
+                if (!shouldContinue) {
+                    System.out.println("Программа завершена.");
+                    break;
+                }
+            } catch (Exception e) {
+                System.err.println("Ошибка выполнения команды: " + e.getMessage());
+            }
         }
-
-        System.out.println("Завершение программы.");
     }
 }

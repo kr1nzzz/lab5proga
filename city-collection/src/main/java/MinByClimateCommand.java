@@ -13,6 +13,6 @@ public class MinByClimateCommand implements Command {
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         City c = ctx.cm.minByClimate();
         System.out.println(c == null ? "Коллекция пуста." : c.toString());
-        return false;
+        return true;
     }
 }

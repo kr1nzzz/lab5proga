@@ -13,11 +13,11 @@ public class ShowCommand implements Command {
     public boolean execute(String[] args, InputManager input, CommandContext ctx) {
         if (ctx.cm.size() == 0) {
             System.out.println("Коллекция пуста.");
-            return false;
+            return true;
         }
         for (City c : ctx.cm.getAll()) {
             System.out.println(c);
         }
-        return false;
+        return true;
     }
 }
